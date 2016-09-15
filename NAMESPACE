@@ -1,0 +1,8 @@
+importFrom(BiocParallel, "bplapply", "MulticoreParam")
+importFrom(parallel, "mclapply")
+importFrom(Rsamtools, "BamFileList", "ScanBamParam")
+importFrom(GenomicAlignments, "readGAlignments", "readGAlignmentPairs")
+
+export("sanitizeReads", "summarizeOverlaps.adjNH")
+
+

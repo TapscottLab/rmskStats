@@ -1,0 +1,95 @@
+<!--
+%\VignetteIndexEntry{Examples} 
+%\VignettePackage{countRepeats}
+%\VignetteEngine{knitr::knitr}
+-->
+
+```{r style, echo = FALSE, results = 'asis'}
+BiocStyle::markdown()
+```
+
+# countRepeats
+NOTE: This package has only been tested using single-ended reads and R/3.3.
+
+This package consists of two main functions: **sanitizeReads**and **summarizeOverlaps.adjNH**. (Please refer to the man pages for more detials.) The  **sanitizeReads**_ function prepares the queries to be counted by  **summarizeOverlaps.adjNH**. It produces a list of GRanges of unique read with "count" and "NH" metadata.
+
+
+
+The **summarizeOverlaps.adjNH** function is an extension of GenomicAlignments' summarizeOverlaps. It is designed to count hits for repetitive genomic features.  It adjusts the counts for each genomic features by the number of reported alignmentsof the unique reads. This function is useful when the genomic features are repetative elements in which the reads can be alignments to multiple places. For example, if a read has NH=15 (15 best alignments) and is, in fact,  aligned to 15 repetitive genomic postions (count=15), it will be counted as 1 (count/NH). In the same word, instead of 15 hits (as using original "summarizeOverlaps"), the repeat element has one hit.
+
+## Example
+```{r library}
+suppressPackageStartupMessages(library(SGSeq))
+library(countRepeats)
+```
+
+### sanitizeRead
+```{r sanitizeRead}
+bam_dir <- system.file("extdata", "bams", package="SGSeq")
+bam_files <- list.files(bam_dir, pattern="\\.bam$", full.names=TRUE)
+all.reads <- sanitizeReads(bamFiles=bam_files, cores=2, singleEnd=TRUE,
+                           verbose=TRUE)
+```
+The GRanges element of **all.reads** arguement has to have "count" and "NH" metadata columns.
+
+```{r all.reads}
+all.reads[[1]]
+```
+
+### RMSK track from UCSC
+The sub.hg19 (hg19.rmsk)  RMSK tracks is available in this package. It is a subset of RMSK of hg19 genome build, and it is downloaded via **rtracklayer** from UCSC genome browser on 03/08/2016. To build for an GRanges instance representing the RMSK track, please see "scripts/getRMSKFromUCSC.R" file.
+
+
+### summarizeOverlaps.adjNH
+The list-level of the feature below (repElements) is an unique repeat elements (repName). Now we are counting hits for the features of interest. We need to make sure the sequence levels are the same between the features and queries before calling the function.
+
+```{r count1}
+data(sub.hg19.rmsk)
+seqlevelsStyle(sub.hg19.rmsk) <- "NCBI"
+keeplevels <- intersect(seqlevels(sub.hg19.rmsk), seqlevels(all.reads[[1]]))
+hg19.rmsk <- keepSeqlevels(sub.hg19.rmsk, keeplevels)
+repElements <- split(sub.hg19.rmsk, sub.hg19.rmsk$repName)
+se.repeat <- summarizeOverlaps.adjNH(features=repElements, cores=2,
+                                     all.reads=all.reads,
+                                     type="any",
+                                     ignore.strand=TRUE,
+                                     inter.feature=FALSE)
+se.repeat									 
+```
+									 
+
+## Example 2
+One can use **summarizeOverlaps.adjNH** for general purpose. I found it useful for counting hits for ncRNA features.
+
+```{r example 2}
+suppressPackageStartupMessages(library(TxDb.Hsapiens.UCSC.hg19.knownGene))
+features <- exonsBy(TxDb.Hsapiens.UCSC.hg19.knownGene, by="gene")
+seqlevelsStyle(features) <- "NCBI"
+keeplevels <- intersect(seqlevels(features), seqlevels(all.reads[[1]]))
+features <- keepSeqlevels(features, keeplevels)
+
+se <- summarizeOverlaps.adjNH(features=features, cores=2,
+                              all.reads=all.reads,
+                              type="any",
+                              ignore.strand=TRUE,
+                              inter.feature=FALSE)
+se							  
+```
+
+
+## How to get RMSK tracks from UCSC using rtracklayer
+```{r getRMSK, evel=FALSE}
+library(rtracklayer)
+library(GenomicRanges)
+mySession = browserSession("UCSC")
+genome(mySession) <- "hg38"
+tbl.rmsk <- getTable(ucscTableQuery(mySession, track="rmsk", table="rmsk"))
+
+hg38.rmsk <- GRanges(seqnames=Rle(tbl.rmsk$genoName),
+                     ranges=IRanges(start=tbl.rmsk$genoStart,
+                         end=tbl.rmsk$genoEnd),
+                     strand=tbl.rmsk$strand)
+n <- setdiff(colnames(tbl.rmsk), c("genoName", "genoStart", "genoEnd", "strand"))
+mcols(hg38.rmsk) <- tbl.rmsk[, n]
+hg38.rmsk
+```
