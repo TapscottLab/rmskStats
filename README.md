@@ -10,4 +10,4 @@ adjustment w.r.t. numbers of reported multiple alignment (NH column).  *DESeq2* 
 up/down-regulated repeat elements (repName). The enrichment/depletion analysis uses Hypergeometric test to determ the significance
 of the enrichment state of a repeat family (repFamily) or class (repClass).
 
-This package is under development and will soon be submit to Bioconductor repository.
+This package is under development and will soon be submitted to Bioconductor repository.
