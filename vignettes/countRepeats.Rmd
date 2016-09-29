@@ -1,6 +1,7 @@
 <!--
-%\VignetteIndexEntry{Examples} 
-%\VignettePackage{countRepeats}
+%\VignetteIndexEntry{Counting Hits and Enrichment/depletion Analysis for -->
+<!--Repeat Elements} 
+%\VignettePackage{rmskStats}
 %\VignetteEngine{knitr::knitr}
 -->
 
@@ -8,19 +9,31 @@
 BiocStyle::markdown()
 ```
 
-# countRepeats
-NOTE: This package has only been tested using single-ended reads and R/3.3.
+# The rmskStats Pakcage
+The rmskStats package is a standard R package providing tools for
+counting gene hits and enrichment/depletion analysis for
+RepeatMasker-annotated repeat elements with RNA-seq data.
 
-This package consists of two main functions: **sanitizeReads**and **summarizeOverlaps.adjNH**. (Please refer to the man pages for more detials.) The  **sanitizeReads**_ function prepares the queries to be counted by  **summarizeOverlaps.adjNH**. It produces a list of GRanges of unique read with "count" and "NH" metadata.
+## Counting Hits
+Most of the reads that map to repeat elements are prone to align to
+multiple postions on the genome. To avoid a read to be counted
+multiple times, this package divides the count of a read by the number
+of reported alignaments, the NH column from the bam file.
 
+Let us start an example with two main functions: **sanitizeReads()** and
+**summarizeOverlaps.adjNH()**. The  **sanitizeReads**_ function prepares
+the queries to be counted by  **summarizeOverlaps.adjNH**. It produces
+a list of GRanges of unique read with "count" (the number of copies of
+the unique read) and "NH" metadata. 
 
-
-The **summarizeOverlaps.adjNH** function is an extension of GenomicAlignments' summarizeOverlaps. It is designed to count hits for repetitive genomic features.  It adjusts the counts for each genomic features by the number of reported alignmentsof the unique reads. This function is useful when the genomic features are repetative elements in which the reads can be alignments to multiple places. For example, if a read has NH=15 (15 best alignments) and is, in fact,  aligned to 15 repetitive genomic postions (count=15), it will be counted as 1 (count/NH). In the same word, instead of 15 hits (as using original "summarizeOverlaps"), the repeat element has one hit.
+The **summarizeOverlaps.adjNH** function takes the return of
+**sanitizeReads()** as an input and counting the hits for the given
+genomic feature with adjustment of the the NH column. 
 
 ## Example
 ```{r library}
 suppressPackageStartupMessages(library(SGSeq))
-library(countRepeats)
+library(rmskStats)
 ```
 
 ### sanitizeRead
@@ -51,7 +64,7 @@ hg19.rmsk <- keepSeqlevels(sub.hg19.rmsk, keeplevels)
 repElements <- split(sub.hg19.rmsk, sub.hg19.rmsk$repName)
 se.repeat <- summarizeOverlaps.adjNH(features=repElements, cores=2,
                                      all.reads=all.reads,
-                                     type="any",
+                                     type="within",
                                      ignore.strand=TRUE,
                                      inter.feature=FALSE)
 se.repeat									 
@@ -70,7 +83,7 @@ features <- keepSeqlevels(features, keeplevels)
 
 se <- summarizeOverlaps.adjNH(features=features, cores=2,
                               all.reads=all.reads,
-                              type="any",
+                              type="within",
                               ignore.strand=TRUE,
                               inter.feature=FALSE)
 se							  
